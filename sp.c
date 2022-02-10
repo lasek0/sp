@@ -346,7 +346,7 @@ int main(int argc, char* argv[]) {
 						delete (&fmts);
 						return ERR_PRINT_INV_FMT;
 					}
-					i->print = "%c";
+					i->print = "%s";
 					break;
 
 			}
