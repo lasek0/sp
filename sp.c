@@ -173,8 +173,6 @@ int main(int argc, char* argv[]) {
 			case 'H': 
 			case 'i': 
 			case 'I': 
-			case 'l': 
-			case 'L': 
 			case 'q': 
 			case 'Q': 
 			case 'P': i->print = "%x"; break;
