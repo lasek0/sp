@@ -677,9 +677,22 @@ int main(int argc, char* argv[]) {
 		for (struct Fmt* i = fmts; i; i = i->next) {
 			switch (i->format) {
 				case 'x':
+					i->size = sizeof(uint8_t) * i->count;
+					i->data = malloc (i->size);
+					if (i->data == NULL) {
+						fprintf (stderr, "ERROR: Could not allocate memory!\n");
+						delete (&fmts);
+						return ERR_ALLOC;
+					}
+					memset (i->data, 0, i->size);
 					for (uint32_t k = 0; k < i->count; k++) {
-						char c;
-						fread (&c, 1, 1, in);
+						uint8_t* t = i->data;
+						int r = fread (&t[k], 1, 1, in);
+						if (r != 1) {
+							fprintf (stderr, "ERROR: could not read data from input file\n");
+							delete (&fmts);
+							return ERR_READ_IN;
+						}
 					}
 					break;
 				case 'c':

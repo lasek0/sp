@@ -80,3 +80,73 @@ val: 1
 
 ```
 
+
+some example:
+```
+$ ./sp -r -i sp -n mag,class,data,version,osabi,abiver,e_type,e_machine,e_version,e_entry,e_phoff,e_shoff,e_flags,e_ehsize,e_phentsize,e_phnum,e_shentsize,e_shnum,e_shstrndx "c[4]BBBBBx[7]HHIQQQIHHHHHH"
+mag        : ELF
+class      : 2
+data       : 1
+version    : 1
+osabi      : 0
+abiver     : 0
+e_type     : 3
+e_machine  : 3e
+e_version  : 1
+e_entry    : 2ef0
+e_phoff    : 40
+e_shoff    : 6e20
+e_flags    : 0
+e_ehsize   : 40
+e_phentsize: 38
+e_phnum    : d
+e_shentsize: 40
+e_shnum    : 1f
+e_shstrndx : 1e
+```
+
+check padd bytes using debug mode:
+```
+$ ./sp -d -r -i sp -n mag,class,data,version,osabi,abiver,e_type,e_machine,e_version,e_entry,e_phoff,e_shoff,e_flags,e_ehsize,e_phentsize,e_phnum,e_shentsize,e_shnum,e_shstrndx "c[4]BBBBBx[7]HHIQQQIHHHHHH"
+endian: @ format:c print_format:' %c' count:4 name:'mag' data size:4 data ptr:0x559d82cc6980
+00000000 7f 45 4c 46                                     .ELF            
+endian: @ format:B print_format:' %x' count:1 name:'class' data size:1 data ptr:0x559d82cc79b0
+00000000 02                                              .               
+endian: @ format:B print_format:' %x' count:1 name:'data' data size:1 data ptr:0x559d82cc79d0
+00000000 01                                              .               
+endian: @ format:B print_format:' %x' count:1 name:'version' data size:1 data ptr:0x559d82cc79f0
+00000000 01                                              .               
+endian: @ format:B print_format:' %x' count:1 name:'osabi' data size:1 data ptr:0x559d82cc7a10
+00000000 00                                              .               
+endian: @ format:B print_format:' %x' count:1 name:'abiver' data size:1 data ptr:0x559d82cc7a30
+00000000 00                                              .               
+endian: @ format:x print_format:'   ' count:7 name:'(null)' data size:7 data ptr:0x559d82cc7a50
+00000000 00 00 00 00 00 00 00                            .......         
+endian: @ format:H print_format:' %x' count:1 name:'e_type' data size:2 data ptr:0x559d82cc7a70
+00000000 03 00                                           ..              
+endian: @ format:H print_format:' %x' count:1 name:'e_machine' data size:2 data ptr:0x559d82cc7a90
+00000000 3e 00                                           >.              
+endian: @ format:I print_format:' %x' count:1 name:'e_version' data size:4 data ptr:0x559d82cc7ab0
+00000000 01 00 00 00                                     ....            
+endian: @ format:Q print_format:' %x' count:1 name:'e_entry' data size:8 data ptr:0x559d82cc7ad0
+00000000 20 2f 00 00 00 00 00 00                          /......        
+endian: @ format:Q print_format:' %x' count:1 name:'e_phoff' data size:8 data ptr:0x559d82cc7af0
+00000000 40 00 00 00 00 00 00 00                         @.......        
+endian: @ format:Q print_format:' %x' count:1 name:'e_shoff' data size:8 data ptr:0x559d82cc7b10
+00000000 20 6e 00 00 00 00 00 00                          n......        
+endian: @ format:I print_format:' %x' count:1 name:'e_flags' data size:4 data ptr:0x559d82cc7b30
+00000000 00 00 00 00                                     ....            
+endian: @ format:H print_format:' %x' count:1 name:'e_ehsize' data size:2 data ptr:0x559d82cc7b50
+00000000 40 00                                           @.              
+endian: @ format:H print_format:' %x' count:1 name:'e_phentsize' data size:2 data ptr:0x559d82cc7b70
+00000000 38 00                                           8.              
+endian: @ format:H print_format:' %x' count:1 name:'e_phnum' data size:2 data ptr:0x559d82cc7b90
+00000000 0d 00                                           ..              
+endian: @ format:H print_format:' %x' count:1 name:'e_shentsize' data size:2 data ptr:0x559d82cc7bb0
+00000000 40 00                                           @.              
+endian: @ format:H print_format:' %x' count:1 name:'e_shnum' data size:2 data ptr:0x559d82cc7bd0
+00000000 1f 00                                           ..              
+endian: @ format:H print_format:' %x' count:1 name:'e_shstrndx' data size:2 data ptr:0x559d82cc7bf0
+00000000 1e 00                                           ..              
+```
+
