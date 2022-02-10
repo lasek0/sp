@@ -918,7 +918,7 @@ int main(int argc, char* argv[]) {
 					for (uint32_t k = 0; k < i->count; k++) {
 						uint32_t len = 0;
 						for (;;) {
-							if (i->size <= len) {
+							if (i->size <= off + len) {
 								i->size += 0x10;
 								i->data = realloc (i->data, i->size);
 								if (i->data == NULL) {
