@@ -925,6 +925,11 @@ int main(int argc, char* argv[]) {
 							t[off + len] = x;
 							len += 1;
 							if (x == 0) break;
+							if (len > 255){
+								fprintf (stderr, "ERROR: string size '%u' too large.\n", len);
+								delete (&fmts);
+								return ERR_STR_LEN_LIMIT;
+							}
 						}
 						off += len;
 					}
