@@ -7,7 +7,7 @@
 struct Fmt {
 	char endian;
 	char format;
-	char print;
+	char* print;
 	uint32_t count;
 	char* name;
 	struct Fmt* next;
@@ -20,7 +20,7 @@ struct Fmt* new(struct Fmt** head) {
 		*head = malloc (sizeof(struct Fmt));
 		(*head)->endian = '@';
 		(*head)->format = 'x';
-		(*head)->print = 'x';
+		(*head)->print = "";
 		(*head)->count = 1;
 		(*head)->name = NULL;
 		(*head)->next = NULL;
@@ -102,8 +102,6 @@ int main(int argc, char* argv[]) {
 "      H   uint16_t\n"
 "      i   int32_t\n"
 "      I   uint32_t\n"
-"      l   int32_t\n"
-"      L   uint32_t\n"
 "      q   int64_t\n"
 "      Q   uint64_t\n"
 "      f   float\n"
@@ -115,9 +113,10 @@ int main(int argc, char* argv[]) {
 "\n"
 "  opt:\n"
 "   -r      reverse - unpack insteadof pack\n"
-"   -j N    skip N first bytes. ignored for -r.\n"
+"   -i STR  input stream file (stdin by default). only with -r\n"
+"   -o STR  output stream file (stdout by default)\n"
 "   -x XX   pad byte value. ignored for -r.\n"
-"   -n STR  comma separated struct names. only with -r\n"
+"   -n STR  comma separated struct names for each fmt (exclude x). only with -r\n"
 "           otherwise skipped, Ex: -n \"id,first name,age\"\n"
 "   -p STR  print format for each fmt. only with -r\n"
 "           fmt: c\n"
@@ -137,9 +136,7 @@ int main(int argc, char* argv[]) {
 "  val:\n"
 "    Allow to pass values as numbers, string or bytes.\n"
 "    Example: 123, 0b111, 0o672, 0xab1, \"def ine\"\n"
-"    In case where -r is passed as option, then val1 are file name\n"
-"    and val2... are skipped.\n"
-"    You can pass \"-\" as file name for reading from stdin\n"
+"    In case where -r is passed as option, then all val's are ignored\n"
 "\n"
 "\n"
 "Examples:\n"
@@ -148,10 +145,10 @@ int main(int argc, char* argv[]) {
 "00000010\n"
 "\n"
 "$ echo -ne \"\\x41\\x42\\x43\\x00\\xaa\\xbb\\xcc\\xdd\\x01\\x00\\x00\\x00\" |\n"
-" %s -r -n \"tag,arr,val\" \"c[3]x>H[2]<I\" -\n"
+" %s -r -n \"tag,arr,val\" \"c[3]x>H[2]<I\"\n"
 "tag: ABC\n"
-"arr: 0xaabb, 0xccdd\n"
-"val: 0x00000001\n"
+"arr: aabb, ccdd\n"
+"val: 1\n"
 "\n"
 , *argv, *argv, *argv
 			);
@@ -161,9 +158,12 @@ int main(int argc, char* argv[]) {
 	struct Fmt* fmts = NULL;
 	uint8_t pad_byte = 0;
 	uint8_t reverse = 0;
-	uint32_t skip = 0;
 	char* names = NULL;
 	char* print = NULL;
+        char* infn = NULL;
+        char* outfn = NULL;
+	FILE* in = stdin;
+	FILE* out = stdout;
 
 	// parse opt
 	for (; *argv; ) {
@@ -171,12 +171,12 @@ int main(int argc, char* argv[]) {
 		if (!opt) goto error2;
 		if (*opt++ != '-') break;
 		if (!*opt) goto error2;
-		if (*argv == 0) goto error2;
 		else if (*opt == 'r') reverse = 1;
 		else if (*opt == 'x') pad_byte = (uint8_t)strtoul (*++argv, NULL, 0);
-		else if (*opt == 'j') skip = (uint32_t)strtoul (*++argv, NULL, 0);
 		else if (*opt == 'n') names = *++argv;
 		else if (*opt == 'p') print = *++argv;
+		else if (*opt == 'i') infn = *++argv;
+		else if (*opt == 'o') outfn = *++argv;
 		else goto error2;
 	}
 
@@ -193,13 +193,13 @@ int main(int argc, char* argv[]) {
 
 		// parse format
 		if (!*fmt) goto error1;
-		if (strchr ("xcbBhHiIlLqQfdspP", *fmt))
+		if (strchr ("xcbBhHiIlLqQfdsp", *fmt))
 			i->format = *fmt++;
 
 		// set default print format
 		switch (i->format) {
-			case 'x': i->print = ' '; break;
-			case 'c': i->print = 'c'; break;
+			case 'x': i->print = ""; break;
+			case 'c': i->print = "%c"; break;
 			case 'b': 
 			case 'B': 
 			case 'h': 
@@ -210,14 +210,12 @@ int main(int argc, char* argv[]) {
 			case 'L': 
 			case 'q': 
 			case 'Q': 
-			case 'P': i->print = 'x'; break;
-			case 'f': i->print = 'f'; break;
-			case 'd': i->print = 'd'; break;
+			case 'P': i->print = "%x"; break;
+			case 'f': i->print = "%f"; break;
+			case 'd': i->print = "%lf"; break;
 			case 's': 
-			case 'p': i->print = 's'; break;
+			case 'p': i->print = "%c"; break;
 		}
-
-		if (!*fmt) break;
 
 		// parse array notaton
 		if (*fmt == '['){
@@ -233,7 +231,7 @@ int main(int argc, char* argv[]) {
 
 
 	// parse names parameter
-	if (names) {
+	if (names && reverse == 1) {
 		for (struct Fmt* i = fmts; i; i = i->next) {
 			if (i->format == 'x') continue;
 			if (i->next != NULL) {
@@ -252,7 +250,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// parse print
-	if (print) {
+	if (print && reverse == 1) {
 		for (struct Fmt* i = fmts; i; i = i->next) {
 			if (i->format == 'x') continue;
 
@@ -261,31 +259,52 @@ int main(int argc, char* argv[]) {
 			// validate format for fmt 
 			switch (i->format) {
 				case 'c':
-					if(*print != 'c') goto error5; else break;
+					if(*print != 'c') goto error5;
+					i->print = "%c";
+					break;
 				case 'b':
 				case 'h':
 				case 'i':
 				case 'l':
 				case 'q':
-					if(strchr("ixob", *print) == NULL) goto error5; else break;
+					switch (*print) {
+						case 'i': i->print = "%i"; break;
+						case 'x': i->print = "%x"; break;
+						case 'o': i->print = "%o"; break;
+						case 'b': i->print = "%b"; break;
+						default: goto error5;
+					}
+					break;
 				case 'B':
 				case 'H':
 				case 'I':
 				case 'L':
 				case 'Q':
 				case 'P':
-					if(strchr("uxob", *print) == NULL) goto error5; else break;
+					switch (*print) {
+						case 'u': i->print = "%u"; break;
+						case 'x': i->print = "%x"; break;
+						case 'o': i->print = "%o"; break;
+						case 'b': i->print = "%b"; break;
+						default: goto error5;
+					}
+					break;
 				case 's':
 				case 'p':
-					if(*print != 's') goto error5; else break;
+					if(*print != 's') goto error5;
+					i->print = "%c";
+					break;
 				case 'f':
-					if(*print != 'f') goto error5; else break;
+					if(*print != 'f') goto error5;
+					i->print = "%f";
+					break;
 				case 'd':
-					if(*print != 'd') goto error5; else break;
+					if(*print != 'd') goto error5;
+					i->print = "%lf";
+					break;
 
 			}
 
-			i->print = *print;
 			print++;
 
 			if (i->next == NULL && *print != 0) goto error4;
@@ -293,10 +312,26 @@ int main(int argc, char* argv[]) {
 	}
 	
 
+	// parse in file name
+	if (infn) {
+		in = fopen (infn, "rb");
+		if (!in) {
+			goto error6;
+		}
+	}
+
+	// parse out file name
+	if (outfn) {
+		out = fopen (outfn, "w");
+		if (!out) {
+			goto error6;
+		}
+	}
+
 	/*
 	// XXX: DEBUG ONLY
 	for (struct Fmt* i = fmts; i; i = i->next) {
-		fprintf (stderr, "%c %c %c %d %s\n",
+		fprintf (stderr, "%c %c %s %d %s\n",
 				i->endian,
 				i->format,
 				i->print,
@@ -307,97 +342,92 @@ int main(int argc, char* argv[]) {
 
 	// parse val
 	if (reverse == 0) {
-		//
-		FILE* out = stdout;
-
 		for (struct Fmt* i = fmts; i; i = i->next) {
 			switch (i->format) {
 				case 'x':
-					for (;i->count; i->count--) {
+					for (; i->count; i->count--) {
 						fwrite (&pad_byte, 1, 1, out);
 					}
 					break;
 				case 'c':
-					for (char x; i->count; i->count--) {
-						x = *((*argv)++);
+					for (; i->count; i->count--) {
+						char x = *((*argv)++);
 						fwrite (&x, 1, 1, out);
 					}
 					argv++;
 					break;
 				case 'B':
-					for (uint8_t x; i->count; i->count--) {
-						x = (uint8_t)strtoul (*argv++, NULL, 0);
+					for (; i->count; i->count--) {
+						uint8_t x = strtoul (*argv++, NULL, 0);
 						fwrite (&x, 1, 1, out);
 					}
 					break;
 				case 'b':
-					for (int8_t x; i->count; i->count--){
-						x = (int8_t)strtol (*argv++, NULL, 0);
+					for (; i->count; i->count--){
+						int8_t x = strtol (*argv++, NULL, 0);
 						fwrite (&x, 1, 1, out);
 					}
 					break;
 				case 'H':
-					for (uint16_t x; i->count; i->count--){
-						x = (uint16_t)strtoul (*argv++, NULL, 0);
+					for (; i->count; i->count--){
+						uint16_t x = strtoul (*argv++, NULL, 0);
 						endian (i->endian, &x, 2);
 						fwrite (&x, 2, 1, out);
 					}
 					break;
 				case 'h':
-					for (int16_t x; i->count; i->count--){
-						x = (int16_t)strtol (*argv++, NULL, 0);
+					for (; i->count; i->count--){
+						int16_t x = strtol (*argv++, NULL, 0);
 						endian (i->endian, &x, 2);
 						fwrite (&x, 2, 1, out);
 					}
 					break;
-				case 'L': 
 				case 'I':
-					for (uint32_t x; i->count; i->count--){
-						x = (uint32_t)strtoul (*argv++, NULL, 0);
+					for (; i->count; i->count--){
+						uint32_t x = strtoul (*argv++, NULL, 0);
 						endian (i->endian, &x, 4);
 						fwrite (&x, 4, 1, out);
 					}
 					break;
-				case 'l': 
 				case 'i':
-					for (int32_t x;i->count; i->count--) {
-						x = (int32_t)strtol (*argv++, NULL, 0);
+					for (; i->count; i->count--) {
+						int32_t x = strtol (*argv++, NULL, 0);
 						endian (i->endian, &x, 4);
 						fwrite (&x, 4, 1, out);
 					}
 					break;
 				case 'Q':
-					for(uint64_t x;i->count; i->count--){
-						x = (uint64_t)strtoull (*argv++, NULL, 0);
+					for(; i->count; i->count--){
+						uint64_t x = strtoull (*argv++, NULL, 0);
 						endian (i->endian, &x, 8);
 						fwrite (&x, 8, 1, out);
 					}
 					break;
 				case 'q':
-					for(int64_t x;i->count; i->count--){
-						x = (int64_t)strtoll (*argv++, NULL, 0);
+					for(; i->count; i->count--){
+						int64_t x = strtoll (*argv++, NULL, 0);
 						endian (i->endian, &x, 8);
 						fwrite (&x, 8, 1, out);
 					}
 					break;
 				case 'f':
-					for(float x;i->count; i->count--){
-						x = (float)strtof (*argv++, NULL);
+					for(; i->count; i->count--){
+						float x = strtof (*argv++, NULL);
 						endian (i->endian, &x, 4);
 						fwrite (&x, 4, 1, out);
 					}
 					break;
 				case 'd':
-					for(double x;i->count; i->count--){
-						x = (double)strtod (*argv++, NULL);
+					for(; i->count; i->count--){
+						double x = strtod (*argv++, NULL);
 						endian (i->endian, &x, 8);
 						fwrite (&x, 8, 1, out);
 					}
 					break;
 				case 's': 
 					i->count = strlen (*argv)+1;
-					for(char x; i->count; i->count--){
-						x = *(*argv)++;
+					for(; i->count; i->count--){
+						char x = *(*argv)++;
 						fwrite (&x, 1, 1, out);
 					}
 					argv++;
@@ -409,164 +439,150 @@ int main(int argc, char* argv[]) {
 					}
 					fwrite (&i->count, 1, 1, out);
 
-					for(char x; i->count; i->count--){
-						x = *(*argv)++;
+					for(; i->count; i->count--){
+						char x = *(*argv)++;
 						fwrite (&x, 1, 1, out);
 					}
 					argv++;
 					break;
 				default:
-					  // impossible!
+					// impossible!
 					break;
 			}
 		}
 	} else {
-		FILE* in = NULL;
-		FILE* out = NULL;
-
-		char* infname = *argv++;
-		if (infname == NULL){
-			goto error6;
-		} else if (strncmp(infname, "-", 1) == 0) {
-			in = stdin;
-		} else {
-			in = fopen(infname, "rb");
-			if (in == NULL) goto error6;
-		}
-
-
-		char* outfname = *argv++;
-		if (outfname == NULL) {
-			out = stdout;
-		} else {
-			out = fopen(outfname, "w");
-			if (in == NULL){
-				fclose(in);
-				goto error6;
-			}
-		}
-
-
-		for (char dummy; skip; skip--) {
-			fread (&dummy, 1, 1, in);
-		}
-
-		
 		for (struct Fmt* i = fmts; i; i = i->next) {
-			char print_fmt[4] = "%\0\0\0";
-			print_fmt[1] = i->print;
-			if (i->name) fprintf (out, "%s: ", i->name);
-			if (i->print == 'd'){
-				strncpy(print_fmt, "%lf", 4);
-			}
+			if (i->name && strlen(i->name)) fprintf (out, "%s: ", i->name);
 
 			switch (i->format) {
 				case 'x':
-					for (char x; i->count; i->count--) {
+					for (; i->count; i->count--) {
+						uint8_t x = 0;
 						fread (&x, 1, 1, in);
 					}
 					break;
 				case 'c':
-					for (char x; i->count; i->count--) {
+					for (; i->count; i->count--) {
+						char x = 0;
 						fread (&x, 1, 1, in);
-						fprintf (out, print_fmt, x);
+						fprintf (out, i->print, x);
 					}
 					break;
 				case 'b':
-					for (int8_t x; i->count; i->count--) {
+					for (; i->count; i->count--) {
+						int8_t x = 0;
 						fread (&x, 1, 1, in);
-						fprintf (out, print_fmt, x);
+						fprintf (out, i->print, x);
 						if (i->count > 1) fprintf (out, ", ");
 					}
 					break;
 				case 'B':
-					for (uint8_t x; i->count; i->count--) {
+					for (; i->count; i->count--) {
+						uint8_t x = 0;
 						fread (&x, 1, 1, in);
-						fprintf (out, print_fmt, x);
+						fprintf (out, i->print, x);
 						if (i->count > 1) fprintf (out, ", ");
 					}
 					break;
 				case 'h':
-					for (int16_t x; i->count; i->count--) {
+					for (; i->count; i->count--) {
+						int16_t x = 0;
 						fread (&x, 2, 1, in);
 						endian (i->endian, &x, 2);
-						fprintf (out, print_fmt, x);
+						fprintf (out, i->print, x);
 						if (i->count > 1) fprintf (out, ", ");
 					}
 					break;
 				case 'H':
-					for (uint16_t x; i->count; i->count--) {
+					for (; i->count; i->count--) {
+						uint16_t x = 0;
 						fread (&x, 2, 1, in);
 						endian (i->endian, &x, 2);
-						fprintf (out, print_fmt, x);
+						fprintf (out, i->print, x);
 						if (i->count > 1) fprintf (out, ", ");
 					}
 					break;
-				case 'l':
 				case 'i':
-					for (int32_t x; i->count; i->count--) {
+					for (; i->count; i->count--) {
+						int32_t x = 0;
 						fread (&x, 4, 1, in);
 						endian (i->endian, &x, 4);
-						fprintf (out, print_fmt, x);
+						fprintf (out, i->print, x);
 						if (i->count > 1) fprintf (out, ", ");
 					}
 					break;
-				case 'L':
 				case 'I':
-					for (uint32_t x; i->count; i->count--) {
+					for (; i->count; i->count--) {
+						uint32_t x = 0;
 						fread (&x, 4, 1, in);
 						endian (i->endian, &x, 4);
-						fprintf (out, print_fmt, x);
+						fprintf (out, i->print, x);
 						if (i->count > 1) fprintf (out, ", ");
 					}
 					break;
 				case 'q':
-					for (int64_t x; i->count; i->count--) {
+					for (; i->count; i->count--) {
+						int64_t x = 0;
 						fread (&x, 8, 1, in);
 						endian (i->endian, &x, 8);
-						fprintf (out, print_fmt, x);
+						fprintf (out, i->print, x);
 						if (i->count > 1) fprintf (out, ", ");
 					}
 					break;
 				case 'Q':
-					for (uint64_t x; i->count; i->count--) {
+					for (; i->count; i->count--) {
+						uint64_t x = 0;
 						fread (&x, 8, 1, in);
 						endian (i->endian, &x, 8);
-						fprintf (out, print_fmt, x);
+						fprintf (out, i->print, x);
 						if (i->count > 1) fprintf (out, ", ");
 					}
 					break;
 				case 'f':
-					for (float x; i->count; i->count--) {
+					for (; i->count; i->count--) {
+						float x = 0.0;
 						fread (&x, 4, 1, in);
 						endian (i->endian, &x, 4);
-						fprintf (out, print_fmt, x);
+						fprintf (out, i->print, x);
 						if (i->count > 1) fprintf (out, ", ");
 					}
 					break;
 				case 'd':
-					for (double x; i->count; i->count--) {
+					for (; i->count; i->count--) {
+						double x = 0.0;
 						fread (&x, 8, 1, in);
 						endian (i->endian, &x, 8);
-						fprintf (out, print_fmt, x);
+						fprintf (out, i->print, x);
 						if (i->count > 1) fprintf (out, ", ");
 					}
 					break;
+				case 's':
+					i->count = 255; // max string size
+					for (; i->count; i->count--) {
+						char x = 0;
+						fread (&x, 1, 1, in);
+						if (x == '\0') break;
+						fprintf (out, i->print, x);
+					}
+					break;
+				case 'p':
+					fread (&i->count, 1, 1, in);
+					//TODO: fix endianess for other arch than X86
+					for (; i->count; i->count--) {
+						char x = 0;
+						fread (&x, 1, 1, in);
+						fprintf (out, i->print, x);
+					}
+					break;
 			}
+
 			if(i->format != 'x') fprintf (out, "\n");
-		}
-
-		if (strncmp(infname, "-", 1) != 0) {
-			fclose(in);
-		}
-
-		if (outfname != NULL) {
-			fclose(out);
 		}
 
 	}
 
-
+	fclose(in);
+	fclose(out);
 	delete (&fmts);
 	return 0;
 
