@@ -93,7 +93,7 @@ abiver     : 0
 e_type     : 3
 e_machine  : 3e
 e_version  : 1
-e_entry    : 2ef0
+e_entry    : 2f20
 e_phoff    : 40
 e_shoff    : 6e20
 e_flags    : 0
