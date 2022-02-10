@@ -7,7 +7,7 @@ Binary struct pack and unpack.
 Based on python's struct.pack and struct.unpack
 Copyright (c) 2022 by Adrian Laskowski
 
-Usage: sp [opt] "fmt1[fmt2[...]]" val1 [val2 [...]]
+Usage: ./sp [opt] "fmt1[fmt2[...]]" val1 [val2 [...]]
 
   fmt:
     endian indicator (optional):
@@ -43,12 +43,12 @@ Usage: sp [opt] "fmt1[fmt2[...]]" val1 [val2 [...]]
    -p STR  print format for each fmt. only with -r
            fmt: c
              c   char
-           fmt: b h i I L q
+           fmt: b h i q
              i   decimal signed
              x   hexadecimal (default)
              o   octal
              b   binary
-           fmt: B H I L Q
+           fmt: B H I Q
              u   decimal unsigned
              x   hexadecimal (default)
              o   octal
@@ -75,7 +75,6 @@ $ echo -ne "\x41\x42\x43\x00\xaa\xbb\xcc\xdd\x01\x00\x00\x00" |
 tag: ABC
 arr: aabb, ccdd
 val: 1
-
 
 ```
 
