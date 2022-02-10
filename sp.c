@@ -160,7 +160,7 @@ int main(int argc, char* argv[]) {
 			delete (&fmts);
 			return ERR_MISS_FMT_CHR;
 		}
-		if (strchr ("xcbBhHiIlLqQfdsp", *fmt))
+		if (strchr ("xcbBhHiIqQfdsp", *fmt))
 			i->format = *fmt++;
 
 		// set default print format
