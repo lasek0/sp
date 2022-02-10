@@ -215,30 +215,34 @@ int main(int argc, char* argv[]) {
 	if (names && reverse == 1) {
 		for (struct Fmt* i = fmts; i; i = i->next) {
 			if (i->format == 'x') continue;
-			if (i->next != NULL) {
-				char *t = strchr (names, ',');
-				if (t == NULL) {
-					fprintf (stderr, "ERROR: too few names\n");
-					delete (&fmts);
-					return ERR_NAME_TOO_FEW;
-				}
-				*t = 0;
-				i->name = names;
-				size_t l = strlen (i->name);
-				if (l > max_name_size) max_name_size = l;
-				names = t+1;
+
+			if (names == NULL) {
+				fprintf (stderr, "ERROR: too few names\n");
+				delete (&fmts);
+				return ERR_NAME_TOO_FEW;
+			}
+			i->name = names;
+
+			char *t = strchr (names, ',');
+			if (t) {
+				*t = '\0';
+				names = t + 1;
 			} else {
-				char *t = strchr (names, ',');
-				if (t != NULL) {
-					fprintf (stderr, "ERROR: too much names\n");
-					delete (&fmts);
-					return ERR_NAME_TOO_MUCH;
-				}
-				i->name = names;
-				size_t l = strlen (i->name);
-				if (l > max_name_size) max_name_size = l;
 				names = NULL;
 			}
+
+			size_t l = strlen (i->name);
+			if (max_name_size < l) {
+				max_name_size = l;
+			}
+
+
+		}
+		if (names != NULL) {
+			fprintf (stderr, "ERROR: too much names\n");
+			delete (&fmts);
+			return ERR_NAME_TOO_MUCH;
+
 		}
 	}
 
@@ -958,10 +962,12 @@ int main(int argc, char* argv[]) {
 	} else {
 		for (struct Fmt* i = fmts; i; i = i->next) {
 			uint8_t* d = i->data;
-			int r;
+			size_t r;
 			if (i->name && strlen(i->name) && i->format != 'x'){
 				r = fprintf(out, "%s", i->name);
-				for (uint32_t x = max_name_size - r; x; x--) fprintf(out, " ");
+				if (max_name_size > r)
+					for (uint32_t x = max_name_size - r; x; x--)
+						fprintf(out, " ");
 				fprintf (out, ": ");
 			}
 
