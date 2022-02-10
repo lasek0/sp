@@ -109,9 +109,10 @@ int main(int argc, char* argv[]) {
 	FILE* out = stdout;
 	enum { ERR_OPT_LIST=1, ERR_UNK_OPT, ERR_MISS_FMT, ERR_MISS_FMT_CHR,
 		ERR_ARR_FMT, ERR_NAME_OPT, ERR_NAME_TOO_FEW, ERR_NAME_TOO_MUCH,
-		ERR_PRINT_OPT, ERR_PRINT_TOO_FEW, ERR_PRINT_INV_FMT, ERR_PRINT_TOO_MUCH,
-		ERR_OPEN_IN_FILE, ERR_OPEN_OUT_FILE, ERR_PASCAL_STR_LEN,
-		ERR_IN_NAME_ALLOW, ERR_VALS_COUNT, ERR_ALLOC, ERR_READ_IN, 
+		ERR_PRINT_OPT, ERR_PRINT_TOO_FEW, ERR_PRINT_INV_FMT,
+		ERR_PRINT_TOO_MUCH, ERR_OPEN_IN_FILE, ERR_OPEN_OUT_FILE, 
+		ERR_PASCAL_STR_LEN, ERR_IN_NAME_ALLOW, ERR_VALS_COUNT, 
+		ERR_ALLOC, ERR_READ_IN, ERR_INV_FMT_CHR, 
 	};
 
 	// parse opt
@@ -119,7 +120,6 @@ int main(int argc, char* argv[]) {
 		char* opt = *++argv;
 		if (!opt){
 			fprintf (stderr, "ERROR: unexpected end of opt list!\n");
-			delete (&fmts);
 			return ERR_OPT_LIST;
 		}
 		if (*opt++ != '-') break;
@@ -131,7 +131,6 @@ int main(int argc, char* argv[]) {
 		else if (*opt == 'o') outfn = *++argv;
 		else {
 			fprintf (stderr, "ERROR: unknown parameter '%c'\n", *opt);
-			delete (&fmts);
 			return ERR_UNK_OPT;
 		}
 	}
@@ -139,7 +138,6 @@ int main(int argc, char* argv[]) {
 	// parse fmt
 	if (!*argv) {
 		fprintf (stderr, "ERROR: missing fmt!\n");
-		delete (&fmts);
 		return ERR_MISS_FMT;
 	}
 	for (char* fmt = *argv++; fmt && *fmt; ) {
@@ -162,6 +160,11 @@ int main(int argc, char* argv[]) {
 		}
 		if (strchr ("xcbBhHiIqQfdsp", *fmt))
 			i->format = *fmt++;
+		else {
+			fprintf (stderr, "ERROR: invalid fmt char '%c'\n", *fmt);
+			delete (&fmts);
+			return ERR_INV_FMT_CHR;
+		}
 
 		// set default print format
 		switch (i->format) {
