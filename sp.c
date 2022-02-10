@@ -174,7 +174,7 @@ int main(int argc, char* argv[]) {
 			case 'i': 
 			case 'I': 
 			case 'q': 
-			case 'Q': 
+			case 'Q': i->print = "%x"; break;
 			case 'f': i->print = "%f"; break;
 			case 'd': i->print = "%lf"; break;
 			case 's': 
