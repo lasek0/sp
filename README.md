@@ -2,11 +2,12 @@
 Binary struct pack and unpack. Based on python's struct.pack and struct.unpack
 
 ```
+$ sp 
 Binary struct pack and unpack.
 Based on python's struct.pack and struct.unpack
 Copyright (c) 2022 by Adrian Laskowski
 
-Usage: ./sp [opt] "fmt1[fmt2[...]]" val1 [val2 [...]]
+Usage: sp [opt] "fmt1[fmt2[...]]" val1 [val2 [...]]
 
   fmt:
     endian indicator (optional):
@@ -30,6 +31,7 @@ Usage: ./sp [opt] "fmt1[fmt2[...]]" val1 [val2 [...]]
       p   pascal string
     array (optional):
       use "[N]" array notation to indicate an array of values.
+      N is limited up to 65535
 
   opt:
    -r      reverse - unpack insteadof pack
@@ -41,8 +43,12 @@ Usage: ./sp [opt] "fmt1[fmt2[...]]" val1 [val2 [...]]
    -p STR  print format for each fmt. only with -r
            fmt: c
              c   char
-           fmt: b B h H i I l L q Q P
+           fmt: b h i I L q
              i   decimal signed
+             x   hexadecimal (default)
+             o   octal
+             b   binary
+           fmt: B H I L Q
              u   decimal unsigned
              x   hexadecimal (default)
              o   octal
@@ -56,7 +62,7 @@ Usage: ./sp [opt] "fmt1[fmt2[...]]" val1 [val2 [...]]
   val:
     Allow to pass values as numbers, string or bytes.
     Example: 123, 0b111, 0o672, 0xab1, "def ine"
-    In case where -r is passed as option, then all val's are ignored
+    For -r option, all val's are ignored.
 
 
 Examples:
