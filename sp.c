@@ -4,6 +4,43 @@
 #include <string.h>
 
 
+void hexdump (void* x, size_t len) {
+	uint8_t* d = x;
+	for (size_t i=0; i<len; i+=16) {
+		fprintf (stderr, "%.8lx ", i);
+		size_t j;
+		for (j=i; j<i+16 && j<len; j++) fprintf (stderr, "%.2x ", d[j]);
+		for (; j<i+16; j++) fprintf (stderr, "   ");
+		for (j=i; j<i+16 && j<len; j++) fprintf (stderr, "%c", d[j]>=' '&&d[j]<='~'?d[j]:'.');
+		for (; j<i+16; j++) fprintf (stderr, " ");
+		fprintf (stderr, "\n");
+	}
+}
+
+
+void endian(char e, void* d, int l) {
+	uint8_t* x = (uint8_t*)d;
+	if (l&1) return;
+        if (x == NULL) return;
+
+	// only for LE X86
+	if (e == '@' || e == '<') return;
+	if (e == '>') {
+		uint8_t* z = (uint8_t*)d + l - 1;
+		l >>= 1; // div 2
+		for (uint8_t y; l; l--) {
+			y = *z;
+			*z = *x;
+			*x = y;
+			x++;
+			z--;
+		}
+	}
+
+	//TODO: for BE arch
+}
+
+
 struct Fmt {
 	char endian;
 	char format;
@@ -65,27 +102,6 @@ uint32_t size(struct Fmt* head){
 }
 */
 
-void endian(char e, void* d, int l) {
-	uint8_t* x = (uint8_t*)d;
-	if (l&1) return;
-        if (x == NULL) return;
-
-	// only for LE X86
-	if (e == '@' || e == '<') return;
-	if (e == '>') {
-		uint8_t* z = (uint8_t*)d + l - 1;
-		l >>= 1; // div 2
-		for (uint8_t y; l; l--) {
-			y = *z;
-			*z = *x;
-			*x = y;
-			x++;
-			z--;
-		}
-	}
-
-	//TODO: for BE arch
-}
 
 
 const char* help;
@@ -100,6 +116,7 @@ int main(int argc, char* argv[]) {
 	struct Fmt* fmts = NULL;
 	uint8_t pad_byte = 0;
 	uint8_t reverse = 0;
+	uint8_t debug_only = 0;
 	char* names = NULL;
 	uint32_t max_name_size = 0;
 	char* print = NULL;
@@ -112,7 +129,7 @@ int main(int argc, char* argv[]) {
 		ERR_PRINT_OPT, ERR_PRINT_TOO_FEW, ERR_PRINT_INV_FMT,
 		ERR_PRINT_TOO_MUCH, ERR_OPEN_IN_FILE, ERR_OPEN_OUT_FILE, 
 		ERR_PASCAL_STR_LEN, ERR_IN_NAME_ALLOW, ERR_VALS_COUNT, 
-		ERR_ALLOC, ERR_READ_IN, ERR_INV_FMT_CHR, 
+		ERR_ALLOC, ERR_READ_IN, ERR_INV_FMT_CHR, ERR_STR_LEN_LIMIT, 
 	};
 
 	// parse opt
@@ -124,6 +141,7 @@ int main(int argc, char* argv[]) {
 		}
 		if (*opt++ != '-') break;
 		else if (*opt == 'r') reverse = 1;
+		else if (*opt == 'd') debug_only = 1;
 		else if (*opt == 'x') pad_byte = (uint8_t)strtoul (*++argv, NULL, 0);
 		else if (*opt == 'n') names = *++argv;
 		else if (*opt == 'p') print = *++argv;
@@ -275,7 +293,6 @@ int main(int argc, char* argv[]) {
 				case 'b':
 				case 'h':
 				case 'i':
-				case 'l':
 				case 'q':
 					switch (*print) {
 						case 'i': i->print = "%i"; break;
@@ -293,7 +310,6 @@ int main(int argc, char* argv[]) {
 				case 'B':
 				case 'H':
 				case 'I':
-				case 'L':
 				case 'Q':
 					switch (*print) {
 						case 'u': i->print = "%u"; break;
@@ -337,11 +353,12 @@ int main(int argc, char* argv[]) {
 
 			print++;
 
-			if (i->next == NULL && *print != 0) {
-				fprintf (stderr, "ERROR: too much print formats char.");
-				delete (&fmts);
-				return ERR_PRINT_TOO_MUCH;
-			}
+		}
+
+		if (*print != 0) {
+			fprintf (stderr, "ERROR: too much print formats char.");
+			delete (&fmts);
+			return ERR_PRINT_TOO_MUCH;
 		}
 	}
 	
@@ -611,13 +628,19 @@ int main(int argc, char* argv[]) {
 							delete (&fmts);
 							return ERR_VALS_COUNT;
 						}
-						int len = strlen (*argv) + 1;
+						size_t len = strlen (*argv);
+						if (len > 255) {
+							fprintf (stderr, "ERROR: string size '%lu' too large\n", len);
+							delete (&fmts);
+							return ERR_STR_LEN_LIMIT;
+						}
+						len += 1; // incl nul byte
 						i->size += len;
 						i->data = realloc (i->data, i->size);
 						if (i->data == NULL) {
 							fprintf (stderr, "ERROR: could not allocate memory\n");
 							delete (&fmts);
-							return ERR_ALLOC;
+							return ERR_STR_LEN_LIMIT;
 						}
 						memcpy ((char*)i->data + i->size - len, *argv, len);
 						argv++;
@@ -630,13 +653,13 @@ int main(int argc, char* argv[]) {
 							delete (&fmts);
 							return ERR_VALS_COUNT;
 						}
-						int len = strlen (*argv);
+						size_t len = strlen (*argv);
 						if (len > 255) {
-							fprintf (stderr, "ERROR: pascal string length '%d' too large\n", len);
+							fprintf (stderr, "ERROR: pascal string length '%lu' too large\n", len);
 							delete (&fmts);
-							return ERR_ALLOC;
+							return ERR_PASCAL_STR_LEN;
 						}
-						i->size += len + 1;
+						i->size += len + 1; // incl nul byte
 						i->data = realloc (i->data, i->size);
 						if (i->data == NULL) {
 							fprintf (stderr, "ERROR: could not allocate memory\n");
@@ -905,6 +928,8 @@ int main(int argc, char* argv[]) {
 						}
 						off += len;
 					}
+					i->size = off;
+					i->data = realloc (i->data, i->size);
 					
 					break; }
 				case 'p': {
@@ -939,10 +964,10 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	/*
-	// XXX: DEBUG ONLY
-	for (struct Fmt* i = fmts; i; i = i->next) {
-		fprintf (stderr, "%c %c %3s %d %s %d %p\n",
+	
+	if (debug_only){
+		for (struct Fmt* i = fmts; i; i = i->next) {
+			fprintf (stderr, "endian: %c format:%c print_format:'%3s' count:%d name:'%s' data size:%d data ptr:%p\n",
 				i->endian,
 				i->format,
 				i->print,
@@ -950,8 +975,11 @@ int main(int argc, char* argv[]) {
 				i->name,
 				i->size,
 				i->data);
+			hexdump (i->data, i->size);
+		}
+		return 0;
 	}
-	*/
+	
 
 
 	// print results
@@ -1075,6 +1103,7 @@ const char* help =
 "\n"
 "  opt:\n"
 "   -r      reverse - unpack insteadof pack\n"
+"   -d      debug only. parse enveything but not print output, just debug info.\n"
 "   -i STR  input stream file (stdin by default). only with -r\n"
 "   -o STR  output stream file (stdout by default)\n"
 "   -x XX   pad byte value. ignored for -r.\n"

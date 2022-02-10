@@ -2,7 +2,7 @@
 Binary struct pack and unpack. Based on python's struct.pack and struct.unpack
 
 ```
-$ sp 
+$ sp
 Binary struct pack and unpack.
 Based on python's struct.pack and struct.unpack
 Copyright (c) 2022 by Adrian Laskowski
@@ -35,6 +35,7 @@ Usage: ./sp [opt] "fmt1[fmt2[...]]" val1 [val2 [...]]
 
   opt:
    -r      reverse - unpack insteadof pack
+   -d      debug only. parse enveything but not print output, just debug info.
    -i STR  input stream file (stdin by default). only with -r
    -o STR  output stream file (stdout by default)
    -x XX   pad byte value. ignored for -r.
@@ -75,6 +76,7 @@ $ echo -ne "\x41\x42\x43\x00\xaa\xbb\xcc\xdd\x01\x00\x00\x00" |
 tag: ABC
 arr: aabb, ccdd
 val: 1
+
 
 ```
 
