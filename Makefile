@@ -2,5 +2,5 @@ all: sp
 
 
 sp: sp.c
-	gcc sp.c -o sp -Wall -Wextra -Wpedantic -g
+	gcc sp.c -o sp -Wall -Wextra -Wpedantic -O3
 

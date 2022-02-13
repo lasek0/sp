@@ -90,31 +90,21 @@ void delete(struct Fmt** head) {
 	*head = NULL;
 }
 
-/*
- * curently unused
-uint32_t size(struct Fmt* head){
-	if (head == NULL) return 0;
-	uint32_t cnt = 0;
-	for (struct Fmt* x = head; x; x = x->next) {
-		cnt++;
-	}
-	return cnt;
-}
-*/
 
-
-
-const char* help;
+const char* banner;
+const char* usage;
 
 int main(int argc, char* argv[]) {
 
 	if (argc <= 1) {
-		printf (help, *argv, *argv, *argv);
+		puts (banner);
+		printf (usage, *argv, *argv, *argv);
 		return -1;
 	}
 
 	struct Fmt* fmts = NULL;
 	uint8_t pad_byte = 0;
+	uint8_t version = 0;
 	uint8_t reverse = 0;
 	uint8_t debug_only = 0;
 	char* names = NULL;
@@ -141,6 +131,7 @@ int main(int argc, char* argv[]) {
 		}
 		if (*opt++ != '-') break;
 		else if (*opt == 'r') reverse = 1;
+		else if (*opt == 'v'){ version = 1; break; }
 		else if (*opt == 'd') debug_only = 1;
 		else if (*opt == 'x') pad_byte = (uint8_t)strtoul (*++argv, NULL, 0);
 		else if (*opt == 'n') names = *++argv;
@@ -151,6 +142,12 @@ int main(int argc, char* argv[]) {
 			fprintf (stderr, "ERROR: unknown parameter '%c'\n", *opt);
 			return ERR_UNK_OPT;
 		}
+	}
+
+	if (version){
+		puts (banner);
+		printf ("%d.%d.%d.%d\n", 1,0,0,20);
+		return 0;
 	}
 
 	// parse fmt
@@ -283,19 +280,20 @@ int main(int argc, char* argv[]) {
 			// validate format for fmt 
 			switch (i->format) {
 				case 'c':
-					if(*print != 'c') {
-						fprintf (stderr, "ERROR: invalid print format '%c' for '%c' fmt\n", i->format, *print);
-						delete (&fmts);
-						return ERR_PRINT_INV_FMT;
+					switch (*print) {
+						case 'c': i->print = "%c"; break;
+						default:
+							fprintf (stderr, "ERROR: invalid print format '%c' for '%c' fmt\n", i->format, *print);
+							delete (&fmts);
+							return ERR_PRINT_INV_FMT;
 					}
-					i->print = "%c";
 					break;
 				case 'b':
 				case 'h':
 				case 'i':
 				case 'q':
 					switch (*print) {
-						case 'i': i->print = "%i"; break;
+						case 'd': i->print = "%i"; break;
 						case 'x': i->print = "%x"; break;
 						case 'o': i->print = "%o"; break;
 						case 'b': i->print = "%b"; break;
@@ -312,41 +310,46 @@ int main(int argc, char* argv[]) {
 				case 'I':
 				case 'Q':
 					switch (*print) {
-						case 'u': i->print = "%u"; break;
+						case 'd': i->print = "%u"; break;
 						case 'x': i->print = "%x"; break;
 						case 'o': i->print = "%o"; break;
 						case 'b': i->print = "%b"; break;
-						default: {
+						default: 
 							fprintf (stderr, "ERROR: invalid print format '%c' for '%c' fmt\n", i->format, *print);
 							delete (&fmts);
 							return ERR_PRINT_INV_FMT;
-						}
+						
 					}
 					break;
 				case 'f':
-					if(*print != 'f') {
-						fprintf (stderr, "ERROR: invalid print format '%c' for '%c' fmt\n", i->format, *print);
-						delete (&fmts);
-						return ERR_PRINT_INV_FMT;
+					switch (*print) {
+						case 'f': i->print = "%f"; break;
+						case 'e': i->print = "%e"; break;
+						default:
+							fprintf (stderr, "ERROR: invalid print format '%c' for '%c' fmt\n", i->format, *print);
+							delete (&fmts);
+							return ERR_PRINT_INV_FMT;
 					}
-					i->print = "%f";
 					break;
 				case 'd':
-					if(*print != 'd') {
-						fprintf (stderr, "ERROR: invalid print format '%c' for '%c' fmt\n", i->format, *print);
-						delete (&fmts);
-						return ERR_PRINT_INV_FMT;
+					switch (*print) {
+						case 'f': i->print = "%lf"; break;
+						case 'e': i->print = "%le"; break;
+						default:
+							fprintf (stderr, "ERROR: invalid print format '%c' for '%c' fmt\n", i->format, *print);
+							delete (&fmts);
+							return ERR_PRINT_INV_FMT;
 					}
-					i->print = "%lf";
 					break;
 				case 's':
 				case 'p':
-					if(*print != 's') {
-						fprintf (stderr, "ERROR: invalid print format '%c' for '%c' fmt\n", i->format, *print);
-						delete (&fmts);
-						return ERR_PRINT_INV_FMT;
+					switch (*print) {
+						case 's': i->print = "%s"; break;
+						default:
+							fprintf (stderr, "ERROR: invalid print format '%c' for '%c' fmt\n", i->format, *print);
+							delete (&fmts);
+							return ERR_PRINT_INV_FMT;
 					}
-					i->print = "%s";
 					break;
 
 			}
@@ -1087,12 +1090,13 @@ int main(int argc, char* argv[]) {
 
 }
 
-
-const char* help = 
+const char* banner = 
 "Binary struct pack and unpack.\n"
 "Based on python's struct.pack and struct.unpack\n"
 "Copyright (c) 2022 by Adrian Laskowski\n"
-"\n"
+;
+
+const char* usage = 
 "Usage: %s [opt] \"fmt1[fmt2[...]]\" val1 [val2 [...]]\n"
 "\n"
 "  fmt:\n"
@@ -1121,6 +1125,7 @@ const char* help =
 "\n"
 "  opt:\n"
 "   -r      reverse - unpack insteadof pack\n"
+"   -v      print version and quit\n"
 "   -d      debug only. parse enveything but not print output, just debug info.\n"
 "   -i STR  input stream file (stdin by default). only with -r\n"
 "   -o STR  output stream file (stdout by default)\n"
@@ -1130,19 +1135,14 @@ const char* help =
 "   -p STR  print format for each fmt. only with -r\n"
 "           fmt: c\n"
 "             c   char\n"
-"           fmt: b h i q\n"
-"             i   decimal signed\n"
-"             x   hexadecimal (default)\n"
-"             o   octal\n"
-"             b   binary\n"
-"           fmt: B H I Q\n"
-"             u   decimal unsigned\n"
+"           fmt: b h i q B H I Q \n"
+"             d   decimal\n"
 "             x   hexadecimal (default)\n"
 "             o   octal\n"
 "             b   binary\n"
 "           fmt: f d\n"
 "             f   floating point\n"
-"             d   double precision floating point\n"
+"             e   science  notation\n"
 "           fmt: s p\n"
 "             s   string\n"
 "\n"
